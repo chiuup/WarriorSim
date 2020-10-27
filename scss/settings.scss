@@ -21,7 +21,7 @@
             transition-delay: .3s;
         }
     }
-
+    
     .wrapper {
         opacity: 0;
         transition: none;
@@ -357,17 +357,16 @@
             margin: 0 auto;
         }
 
-        .js-delprofile {
-            display: none;
-        }
-
-
-
         input {
             float: none;
             color: inherit;
             text-align: left;
             width: auto;
+        }
+
+        ul{
+            overflow:hidden; 
+            overflow-y:auto;
         }
 
         li {
