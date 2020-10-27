@@ -125,7 +125,7 @@ var buffs = [
       spellid: true,
       name: "Blessing of Might",
       iconname: "spell_holy_fistofjustice",
-      group: "",
+      group: "blessingmight",
       ap: 186
    },
    {
@@ -140,7 +140,7 @@ var buffs = [
       spellid: true,
       name: "Grace of Air Totem",
       iconname: "spell_nature_invisibilitytotem",
-      group: "",
+      group: "graceair",
       agi: 67
    },
    {
@@ -148,7 +148,7 @@ var buffs = [
       spellid: true,
       name: "Strength of Earth Totem",
       iconname: "spell_nature_earthbindtotem",
-      group: "",
+      group: "strengthearth",
       str: 61
    },
    {
@@ -244,6 +244,13 @@ var buffs = [
       hit: 2
    },
    {
+      id: 23327,
+      name: "Fire-toasted Bun",
+      iconname: "inv_misc_food_11",
+      group: "",
+      hit: 2
+   },
+   {
       id: 23513,
       spellid: true,
       name: "Essence of the Red",
@@ -256,7 +263,14 @@ var buffs = [
       iconname: "inv_drink_17",
       group: "dragonbreath",
    },
-   
+   {
+      id: 29338,
+      spellid: true,
+      name: "Fire Festival Fury",
+      iconname: "inv_misc_summerfest_brazierorange",
+      crit: 3,
+      spellcrit: 3,
+   },
    
    
 ];

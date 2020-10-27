@@ -1,5 +1,22 @@
 class Player {
-    constructor(testItem, testType, enchtype) {
+    static getConfig(base) {
+        return {
+            race: $('select[name="race"]').val(),
+            aqbooks: $('select[name="aqbooks"]').val() == "Yes",
+            weaponrng: $('select[name="weaponrng"]').val() == "Yes",
+            spelldamage: parseInt($('input[name="spelldamage"]').val()),
+            target: {
+                level: parseInt($('input[name="targetlevel"]').val()),
+                basearmor: parseInt($('input[name="targetarmor"]').val()),
+                armor: parseInt($('input[name="targetarmor"]').val()),
+                defense: parseInt($('input[name="targetlevel"]').val()) * 5,
+                mitigation: 1 - 15 * (parseInt($('input[name="targetresistance"]').val()) / 6000),
+                binaryresist: parseInt(10000 - (8300 * (1 - (parseInt($('input[name="targetresistance"]').val()) * 0.15 / 60)))),
+            },
+        };
+    }
+    constructor(testItem, testType, enchtype, config) {
+        if (!config) config = Player.getConfig();
         this.rage = 0;
         this.level = 60;
         this.timer = 0;
@@ -9,9 +26,10 @@ class Player {
         this.batchedextras = 0;
         this.nextswinghs = false;
         this.nextswingcl = false;
-        this.aqbooks = $('select[name="aqbooks"]').val() == "Yes";
-        this.weaponrng = $('select[name="weaponrng"]').val() == "Yes";
-        this.spelldamage = parseInt($('input[name="spelldamage"]').val());
+        this.race = config.race;
+        this.aqbooks = config.aqbooks;
+        this.weaponrng = config.weaponrng;
+        this.spelldamage = config.spelldamage;
         if (enchtype == 1) {
             this.testEnch = testItem;
             this.testEnchType = testType;
@@ -24,14 +42,7 @@ class Player {
             this.testItem = testItem;
             this.testItemType = testType;
         }
-        this.target = {
-            level: parseInt($('input[name="targetlevel"]').val()),
-            basearmor: parseInt($('input[name="targetarmor"]').val()),
-            armor: parseInt($('input[name="targetarmor"]').val()),
-            defense: parseInt($('input[name="targetlevel"]').val()) * 5,
-            mitigation: 1 - 15 * (parseInt($('input[name="targetresistance"]').val()) / 6000),
-            binaryresist: parseInt(10000 - (8300 * (1 - (parseInt($('input[name="targetresistance"]').val()) * 0.15 / 60))))
-        };
+        this.target = config.target;
         this.base = {
             ap: 0,
             agi: 0,
@@ -82,7 +93,7 @@ class Player {
     }
     addRace() {
         for (let race of races) {
-            if (race.name == $('select[name="race"]').val()) {
+            if (race.name == this.race) {
                 this.base.aprace = race.ap;
                 this.base.ap += race.ap;
                 this.base.str += race.str;
@@ -98,7 +109,7 @@ class Player {
         this.talents = {};
         for (let tree in talents) {
             for (let talent of talents[tree].t) {
-                $.extend(this.talents, talent.aura(talent.c));
+                this.talents = Object.assign(this.talents, talent.aura(talent.c));
             }
         }
     }
@@ -219,8 +230,12 @@ class Player {
                 if ((this.testTempEnchType == type && this.testTempEnch == item.id) ||
                     (this.testTempEnchType != type && item.selected)) {
 
-                    for (let prop in this.base)
-                        this.base[prop] += item[prop] || 0;
+                    for (let prop in this.base) {
+                        if (prop == 'haste')
+                            this.base.haste *= (1 + item.haste / 100) || 1;
+                        else
+                            this.base[prop] += item[prop] || 0;
+                    }
                 }
             }
         }
@@ -277,6 +292,13 @@ class Player {
                 this.base.strmod *= (1 + buff.strmod / 100) || 1;
                 this.base.dmgmod *= (1 + buff.dmgmod / 100) || 1;
                 this.base.haste *= (1 + buff.haste / 100) || 1;
+
+                if (buff.group == "blessingmight" && this.aqbooks)
+                    this.base.ap += 36;
+                if (buff.group == "graceair" && this.aqbooks)
+                    this.base.agi += 10;
+                if (buff.group == "strengthearth" && this.aqbooks)
+                    this.base.str += 16;
             }
         }
     }
@@ -315,8 +337,8 @@ class Player {
     }
     update() {
         this.updateAuras();
+        this.updateArmorReduction();
         this.mh.glanceChance = this.getGlanceChance(this.mh);
-        this.armorReduction = this.getArmorReduction();
         this.mh.miss = this.getMissChance(this.mh);
         this.mh.dwmiss = this.mh.miss;
         this.mh.dodge = this.getDodgeChance(this.mh);
@@ -348,13 +370,11 @@ class Player {
 
         if (this.stats.apmod != 1)
             this.stats.ap += ~~((this.base.aprace + this.stats.str * 2) * (this.stats.apmod - 1));
-        if (this.stats.haste > 2) 
-            this.stats.haste = 2;
     }
     updateStrength() {
         this.stats.str = this.base.str;
         this.stats.ap = this.base.ap;
-            
+        
         for (let name in this.auras) {
             if (this.auras[name].timer) {
                 if (this.auras[name].stats.str)
@@ -394,7 +414,6 @@ class Player {
             this.stats.haste *= (1 + this.auras.pummeler.mult_stats.haste / 100);
         if (this.auras.spider && this.auras.spider.timer)
             this.stats.haste *= (1 + this.auras.spider.mult_stats.haste / 100);
-        if (this.stats.haste > 2) this.stats.haste = 2;
     }
     updateBonusDmg() {
         let bonus = 0;
@@ -410,6 +429,8 @@ class Player {
         this.target.armor = this.target.basearmor;
         if (this.auras.annihilator && this.auras.annihilator.timer)
             this.target.armor = Math.max(this.target.armor - (this.auras.annihilator.stacks * this.auras.annihilator.armor), 0);
+        if (this.auras.rivenspike && this.auras.rivenspike.timer)
+            this.target.armor = Math.max(this.target.armor - (this.auras.rivenspike.stacks * this.auras.rivenspike.armor), 0);
         if (this.auras.bonereaver && this.auras.bonereaver.timer)
             this.target.armor = Math.max(this.target.armor - (this.auras.bonereaver.stacks * this.auras.bonereaver.armor), 0);
         if (this.auras.swarmguard && this.auras.swarmguard.timer)
@@ -563,6 +584,8 @@ class Player {
         if (this.trinketproc1 && this.trinketproc1.spell && this.trinketproc1.spell.timer) this.trinketproc1.spell.end();
         if (this.trinketproc2 && this.trinketproc2.spell && this.trinketproc2.spell.timer) this.trinketproc2.spell.end();
         if (this.attackproc && this.attackproc.spell && this.attackproc.spell.timer) this.attackproc.spell.end();
+
+        if (this.auras.flurry && this.auras.flurry.timer) this.auras.flurry.end();
 
     }
     rollweapon(weapon) {
@@ -789,6 +812,7 @@ class Player {
         let mod = 1;
         let miss = 1700;
         let dmg = proc.magicdmg;
+        if (proc.gcd && this.timer && this.timer < 1500) return 0;
         if (proc.binaryspell) miss = this.target.binaryresist;
         else mod *= this.target.mitigation;
         if (rng10k() < miss) return 0;
@@ -807,6 +831,14 @@ class Player {
         let crit = this.crit + this.mh.crit;
         if (roll < (crit * 100)) dmg *= 2;
         return dmg * this.stats.dmgmod * this.mh.modifier;
+    }
+    serializeStats() {
+        return {
+            auras: this.auras,
+            spells: this.spells,
+            mh: this.mh,
+            oh: this.oh,
+        };
     }
     log(msg) {
         console.log(`${step.toString().padStart(5,' ')} | ${this.rage.toFixed(2).padStart(6,' ')} | ${msg}`);
